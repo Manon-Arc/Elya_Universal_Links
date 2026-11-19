@@ -1,0 +1,84 @@
+name: Deploy Elya Links
+
+on:
+  push:
+    tags:
+      - v*
+    paths:
+      - 'public/**'
+      - 'templates/**'
+      - 'deploy.sh'
+
+jobs:
+  deploy-vps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sync files to VPS via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "public/*,templates/*,deploy.sh"
+          target: ${{ secrets.VPS_APP_PATH }}
+          strip_components: 0
+
+      - name: Generate well-known files on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          VPS_APP_PATH: ${{ secrets.VPS_APP_PATH }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: VPS_APP_PATH
+          script: |
+            set -eu
+            cd "$VPS_APP_PATH"
+            chmod +x deploy.sh
+            ./deploy.sh
+
+      - name: Check production is reachable
+        env:
+          PROD_URL: ${{ vars.PROD_URL }}
+        run: |
+          if [ -z "$PROD_URL" ]; then
+            echo "::error::Repository variable PROD_URL is not set"
+            exit 1
+          fi
+          
+          # Vérifie que le fichier Apple répond 200 et en JSON
+          AASA_URL="${PROD_URL%/}/.well-known/apple-app-site-association"
+          HTTP_CODE=$(curl --silent --show-error --location --connect-timeout 5 --max-time 15 \
+            --output /dev/null --write-out '%{http_code}' "$AASA_URL" || true)
+            
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ $AASA_URL est joignable (HTTP 200)"
+          else
+            echo "::error::$AASA_URL a répondu HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: 🔔 Discord Final Notification
+        if: always()
+        env:
+          DEPLOY_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          PROD_URL: ${{ vars.PROD_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ "$DEPLOY_STATUS" = "success" ]; then
+            MESSAGE=$(printf '🚀 **Elya Links - Déploiement réussi !**\n\n🌐 Prod : %s\n🔗 Test Carte : %s/action?titre=Test&score=100\n\nFichiers générés et vérifiés ✅\n[Logs GitHub Actions](%s)' "${PROD_URL:-non configurée}" "${PROD_URL%/}" "$RUN_URL")
+          else
+            MESSAGE=$(printf '❌ **Échec du déploiement Elya Links !**\n\nStatut : %s\nCommit : `%s`\n\n[Logs GitHub Actions](%s)' "$DEPLOY_STATUS" "$COMMIT_SHA" "$RUN_URL")
+          fi
+          jq -n --arg content "$MESSAGE" '{username: "Chat Perli-Popette !", content: $content}' > discord-payload.json
+          curl --fail-with-body --show-error --silent --connect-timeout 10 --max-time 30 \
+            -H "Content-Type: application/json" -X POST \
+            --data-binary @discord-payload.json "$DISCORD_WEBHOOK_URL"

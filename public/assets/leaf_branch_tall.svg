@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 320" fill="none">
+  <path d="M70 305 C85 220 75 120 105 30" stroke="#841C31" stroke-width="3" stroke-linecap="round"/>
+  <!-- Feuilles -->
+  <path d="M105 30 C115 10 135 5 145 15 C135 30 120 35 105 30 Z" fill="#B54657"/>
+  <path d="M89 85 C60 75 45 50 55 30 C75 42 88 62 89 85 Z" fill="#E39A9E"/>
+  <path d="M85 130 C115 110 145 105 160 125 C140 145 110 145 85 130 Z" fill="#841C31"/>
+  <path d="M82 175 C50 165 30 140 40 115 C62 128 78 150 82 175 Z" fill="#B54657"/>
+  <path d="M78 220 C110 205 135 205 148 225 C128 242 100 238 78 220 Z" fill="#E39A9E"/>
+  <path d="M74 260 C45 250 28 230 35 208 C55 218 70 238 74 260 Z" fill="#841C31"/>
+</svg>
