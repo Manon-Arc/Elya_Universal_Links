@@ -78,7 +78,7 @@ jobs:
           else
             MESSAGE=$(printf '❌ **Échec du déploiement Elya Links !**\n\nStatut : %s\nCommit : `%s`\n\n[Logs GitHub Actions](%s)' "$DEPLOY_STATUS" "$COMMIT_SHA" "$RUN_URL")
           fi
-          jq -n --arg content "$MESSAGE" '{username: "Eclaireuse ELya 🌸", content: $content}' > discord-payload.json
+          jq -n --arg content "$MESSAGE" '{username: "Eclaireuse Elya 🌸", content: $content}' > discord-payload.json
           curl --fail-with-body --show-error --silent --connect-timeout 10 --max-time 30 \
             -H "Content-Type: application/json" -X POST \
             --data-binary @discord-payload.json "$DISCORD_WEBHOOK_URL"
